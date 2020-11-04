@@ -8,83 +8,86 @@
 import UIKit
 
 class MainTableViewController: UITableViewController {
-
+    var pokemon = [Pokemon?]()
+    let baseURL = "https://pokeapi.co/api/v2/pokemon/?limit=150"
+    var currentPageArray = [NameURL?]() {
+        didSet {
+            //            var count = 0
+            for i in currentPageArray {
+                NetworkManager.shared.fetchPokemon((i?.url!)!) { [self] (data) in
+                    pokemon.append(data!)
+                    DispatchQueue.main.async(execute: {
+                        self.tableView.reloadData()
+                    })
+                }
+            }
+        }
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        // Uncomment the following line to preserve selection between presentations
-        // self.clearsSelectionOnViewWillAppear = false
-
-        // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
-        // self.navigationItem.rightBarButtonItem = self.editButtonItem
+        tableView.register(MainTableViewCell.self, forCellReuseIdentifier: "Cell")
     }
-
-    // MARK: - Table view data source
-
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(true)
+        loadNext()
+    }
+    
+    func loadNext() {
+        NetworkManager.shared.fetchPokemonPage(baseURL) { [self] (data) in
+            currentPageArray = data!.results
+        }
+    }
+    
     override func numberOfSections(in tableView: UITableView) -> Int {
-        // #warning Incomplete implementation, return the number of sections
-        return 0
+        return 1
     }
-
+    
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        // #warning Incomplete implementation, return the number of rows
-        return 0
+        return pokemon.count
     }
-
-    /*
+    
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "reuseIdentifier", for: indexPath)
-
-        // Configure the cell...
-
+        let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath) as! MainTableViewCell
+        let row = indexPath.row// + (30*pageNumber)
+        print("row: \(row)")
+        let imageURL = URL(string: (pokemon[row]!.sprites?.front_default)!)
+        let imageData = try? Data(contentsOf: imageURL!)
+        print("pokemon[row]!.types![0].type?.url: \(pokemon[row]!.types![0].type?.url)")
+        cell.pokemonSpriteImageView.image = UIImage(named: "PokemonImage")
+        DispatchQueue.main.async {
+            cell.pokemonSpriteImageView.image = UIImage(data: imageData!)
+        }
+        cell.nameLabel.text = pokemon[row]!.name!// + ": " + String(row)
+        cell.typeLabel.text = pokemon[row]!.types![0].type?.name
+        cell.backgroundColor = .yellow
         return cell
     }
-    */
-
-    /*
-    // Override to support conditional editing of the table view.
-    override func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
-        // Return false if you do not want the specified item to be editable.
-        return true
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let vc = DetailViewController()
+        vc.pokemon = pokemon[indexPath.row]!
+        _ = navigationController?.pushViewController(vc, animated: true)
     }
-    */
-
-    /*
-    // Override to support editing the table view.
-    override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
-        if editingStyle == .delete {
-            // Delete the row from the data source
-            tableView.deleteRows(at: [indexPath], with: .fade)
-        } else if editingStyle == .insert {
-            // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view
-        }    
+    override func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        return 100
     }
-    */
-
-    /*
-    // Override to support rearranging the table view.
-    override func tableView(_ tableView: UITableView, moveRowAt fromIndexPath: IndexPath, to: IndexPath) {
-
+    
+    func loadPokemon(forItemAtIndex index: Int) {
+        let indexPath = IndexPath(row: index, section: 0)
+        if self.tableView.indexPathsForVisibleRows?.contains(indexPath) ?? false {
+            self.tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .fade)
+        }
     }
-    */
-
-    /*
-    // Override to support conditional rearranging of the table view.
-    override func tableView(_ tableView: UITableView, canMoveRowAt indexPath: IndexPath) -> Bool {
-        // Return false if you do not want the item to be re-orderable.
-        return true
-    }
-    */
-
-    /*
-    // MARK: - Navigation
-
-    // In a storyboard-based application, you will often want to do a little preparation before navigation
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        // Get the new view controller using segue.destination.
-        // Pass the selected object to the new view controller.
-    }
-    */
-
 }
 
+extension MainTableViewController: UITableViewDataSourcePrefetching {
+    func tableView(_ tableView: UITableView, prefetchRowsAt indexPaths: [IndexPath]) {
+        
+        print("prefetchRowsAt \(indexPaths)")
+    }
+    
+    func tableView(_ tableView: UITableView, cancelPrefetchingForRowsAt indexPaths: [IndexPath]) {
+        print("cancelPrefetchingForRowsAt \(indexPaths)")
+    }
+}
